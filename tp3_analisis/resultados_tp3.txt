@@ -1,0 +1,110 @@
+===== Q1: ¿Cuántos socios vigentes tiene el club y en qué actividades se concentran?
+SELECT actividad,
+       COUNT(*) AS socios_vigentes
+FROM socios
+WHERE condicion = 'Vigente'
+GROUP BY actividad
+ORDER BY socios_vigentes DESC;
+
+actividad  socios_vigentes
+    Pádel                7
+ Fútbol 5                4
+ Natación                3
+  Básquet                2
+    Tenis                1
+ Gimnasio                1
+
+===== Q2a: ¿Qué parte de los socios vigentes tiene la cuota al día? (detalle por estado)
+SELECT estado,
+       COUNT(*) AS cantidad,
+       ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM socios WHERE condicion = 'Vigente'), 1) AS porcentaje,
+       SUM(cuota) AS monto
+FROM socios
+WHERE condicion = 'Vigente'
+GROUP BY estado
+ORDER BY cantidad DESC;
+
+   estado  cantidad  porcentaje  monto
+   Pagado        12        66.7 200500
+Pendiente         4        22.2  74000
+   Exento         2        11.1      0
+
+===== Q2b: ¿Qué porcentaje de los socios que deben pagar está al día y cuánto dinero está pendiente?
+SELECT COUNT(*) AS socios_que_pagan_cuota,
+       SUM(CASE WHEN estado = 'Pagado' THEN 1 ELSE 0 END) AS al_dia,
+       ROUND(SUM(CASE WHEN estado = 'Pagado' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS porcentaje_al_dia,
+       SUM(CASE WHEN estado = 'Pendiente' THEN cuota ELSE 0 END) AS monto_pendiente
+FROM socios
+WHERE condicion = 'Vigente'
+  AND estado <> 'Exento';
+
+ socios_que_pagan_cuota  al_dia  porcentaje_al_dia  monto_pendiente
+                     16      12               75.0            74000
+
+===== Q3: ¿En qué actividades se concentra la morosidad?
+SELECT actividad,
+       COUNT(*) AS socios_que_pagan,
+       SUM(CASE WHEN estado = 'Pendiente' THEN 1 ELSE 0 END) AS pendientes,
+       ROUND(SUM(CASE WHEN estado = 'Pendiente' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS porcentaje_pendiente,
+       SUM(CASE WHEN estado = 'Pendiente' THEN cuota ELSE 0 END) AS monto_pendiente
+FROM socios
+WHERE condicion = 'Vigente'
+  AND estado <> 'Exento'
+GROUP BY actividad
+ORDER BY porcentaje_pendiente DESC, pendientes DESC;
+
+actividad  socios_que_pagan  pendientes  porcentaje_pendiente  monto_pendiente
+ Fútbol 5                 4           2                  50.0            37000
+ Natación                 3           1                  33.3            18500
+    Pádel                 6           1                  16.7            18500
+  Básquet                 1           0                   0.0                0
+ Gimnasio                 1           0                   0.0                0
+    Tenis                 1           0                   0.0                0
+
+===== Q4: ¿Cuál es la cuota promedio por tipo de socio?
+SELECT cat AS tipo_socio,
+       COUNT(cuota) AS socios_con_cuota,
+       ROUND(AVG(cuota), 2) AS cuota_promedio,
+       MIN(cuota) AS cuota_minima,
+       MAX(cuota) AS cuota_maxima
+FROM socios
+WHERE condicion = 'Vigente'
+  AND cuota > 0          -- excluye exentos ($0) y la cuota a verificar (NULL)
+GROUP BY cat
+ORDER BY cuota_promedio DESC;
+
+tipo_socio  socios_con_cuota  cuota_promedio  cuota_minima  cuota_maxima
+    Activo                14         18750.0         18500         22000
+    Cadete                 1         12000.0         12000         12000
+
+===== Q4 (complemento Pandas): estadística descriptiva de la cuota
+n (socios que pagan, con cuota registrada)       15.00
+Media                                         18300.00
+Mediana                                       18500.00
+Moda                                          18500.00
+Mínimo                                        12000.00
+Máximo                                        22000.00
+Rango                                         10000.00
+Desvío estándar                                1962.14
+
+===== Q5 (Pandas): altas por año
+ALTA
+2021     1
+2022     1
+2023     2
+2024    13
+2025     0
+2026     1
+
+===== Consigna 5: propuesta de IA ejecutada sin cambios
+SELECT estado,
+       COUNT(*) AS cantidad,
+       (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM socios)) AS porcentaje
+FROM socios
+GROUP BY estado;
+
+   estado  cantidad  porcentaje
+   Exento         2   10.526316
+   Pagado        12   63.157895
+Pendiente         4   21.052632
+  Vencido         1    5.263158
